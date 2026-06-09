@@ -442,6 +442,28 @@ def admin_rebuild():
     return jsonify({"status": "ok", "batches": len(batches)})
 
 
+@app.route("/api/admin/upload_manifest", methods=["POST"])
+def upload_manifest():
+    """
+    Upload a pre-built batches.json from local machine to Render.
+    Usage:
+      curl -X POST https://your-app.onrender.com/api/admin/upload_manifest \
+        -H "Content-Type: application/json" \
+        -d @server_data/batches.json
+    Does NOT reset responses or annotators — safe to call on a live server.
+    """
+    data = request.get_json()
+    if not data or not isinstance(data, dict):
+        return jsonify({"error": "expected a JSON object (batches dict)"}), 400
+    # Validate it looks like a batches manifest
+    sample = next(iter(data.values()), None)
+    if sample is None or "images" not in sample:
+        return jsonify({"error": "invalid manifest format — expected {id: {images: [...]}}"}), 400
+    with _lock:
+        save_json(BATCHES_FILE, data)
+    return jsonify({"status": "ok", "batches": len(data)})
+
+
 # ──────────────────────────────────────────────────────────
 # IMAGE SERVING
 # Two modes:

@@ -53,8 +53,7 @@ LOCAL_SESSION_ALIAS = os.environ.get("LOCAL_ALIAS",   "Local Annotator")
 BATCH_SIZE       = 32
 TARGET_RESPONSES = 1 if IS_LOCAL else int(os.environ.get("TARGET_RESPONSES", "3"))
 CLAIM_TTL        = 2 * 3600
-##DATA_DIR         = Path("server_data")
-DATA_DIR = Path(os.environ.get("DATA_DIR", "server_data"))
+DATA_DIR         = Path(os.environ.get("DATA_DIR", "server_data"))
 BATCHES_FILE     = DATA_DIR / "batches.json"
 RESPONSES_FILE   = DATA_DIR / "responses.json"
 ANNOTATORS_FILE  = DATA_DIR / "annotators.json"
@@ -445,21 +444,40 @@ def admin_rebuild():
 
 # ──────────────────────────────────────────────────────────
 # IMAGE SERVING
-# Vite proxies /imgs/* → Flask → actual files on disk.
-# No symlinks, no copying — images stay where they are.
+# Two modes:
+#   LOCAL:    IMAGES_ROOT is a local path → send_from_directory
+#   DEPLOYED: IMAGES_ROOT is an ngrok URL → proxy the request
 # ──────────────────────────────────────────────────────────
 
-# Resolve IMAGES_ROOT to an absolute path so send_from_directory
-# works regardless of the working directory Flask was launched from.
-IMAGES_ROOT_ABS = IMAGES_ROOT.resolve()
+import urllib.request as _urllib
+
+IMAGES_ROOT_STR = str(IMAGES_ROOT)
+IMAGES_ROOT_IS_URL = IMAGES_ROOT_STR.startswith("http://") or IMAGES_ROOT_STR.startswith("https://")
+IMAGES_ROOT_ABS = None if IMAGES_ROOT_IS_URL else IMAGES_ROOT.resolve()
 
 @app.route("/imgs/<path:img_path>")
 def serve_image(img_path):
     """
-    Serves images straight from IMAGES_ROOT_ABS.
-    img_path is e.g. "Inseguros-Barranco-GGZ-2016/19774833.0/heading_0.jpg"
+    LOCAL:    serves from local disk via send_from_directory
+    DEPLOYED: proxies request to ngrok URL (IMAGES_ROOT env var)
     """
-    return send_from_directory(IMAGES_ROOT_ABS, img_path)
+    if IMAGES_ROOT_IS_URL:
+        # Proxy mode — fetch from ngrok and stream back
+        import urllib.error
+        remote_url = f"{IMAGES_ROOT_STR.rstrip('/')}/imgs/{img_path}"
+        try:
+            req = _urllib.Request(remote_url, headers={"ngrok-skip-browser-warning": "true"})
+            with _urllib.urlopen(req, timeout=15) as resp:
+                data = resp.read()
+                content_type = resp.headers.get("Content-Type", "image/jpeg")
+            from flask import Response
+            return Response(data, content_type=content_type)
+        except urllib.error.HTTPError as e:
+            return f"Image not found: {img_path}", 404
+        except Exception as e:
+            return f"Error fetching image: {e}", 502
+    else:
+        return send_from_directory(IMAGES_ROOT_ABS, img_path)
 
 
 if __name__ == "__main__":
@@ -471,5 +489,4 @@ if __name__ == "__main__":
     if not IMAGES_ROOT_ABS.exists():
         print(f"  ⚠  WARNING: image folder not found at {IMAGES_ROOT_ABS}")
         print(f"     Set IMAGES_ROOT env var or adjust the path in app.py\n")
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=5000, debug=True)

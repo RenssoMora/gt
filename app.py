@@ -508,7 +508,7 @@ if __name__ == "__main__":
         print(f"  Session pinned to: '{LOCAL_SESSION_ID}' (alias: '{LOCAL_SESSION_ALIAS}')")
         print(f"  To change: set LOCAL_SESSION=yourname before running\n")
     print(f"  Images served from: {IMAGES_ROOT_ABS}")
-    if not IMAGES_ROOT_ABS.exists():
+    if IMAGES_ROOT_ABS and not IMAGES_ROOT_ABS.exists():
         print(f"  ⚠  WARNING: image folder not found at {IMAGES_ROOT_ABS}")
         print(f"     Set IMAGES_ROOT env var or adjust the path in app.py\n")
     port = int(os.environ.get("PORT", 10000))

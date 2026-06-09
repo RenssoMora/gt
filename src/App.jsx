@@ -12,6 +12,9 @@ const COLS        = 8;
 const ROWS        = 4;
 //const API         = "http://127.0.0.1:5000/api";
 const API         = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000/api";
+const IMGS = import.meta.env.VITE_API_URL 
+  ? import.meta.env.VITE_API_URL.replace("/api", "") 
+  : "";
 const SESSION_KEY  = "ann_session_id";
 const ALIAS_KEY    = "ann_alias";
 const PROFILE_KEY  = "ann_profile";   // full sociodemographic profile
@@ -460,7 +463,7 @@ export default function App() {
     return (
       <Anotador
         key={selectedImg}
-        image={`/imgs/${selectedImg}`}
+        image={`${IMGS}/imgs/${selectedImg}`}
         initialData={annotations[selectedImg]}
         locked={locked}
         editCount={editCounts[selectedImg] ?? 0}
@@ -581,7 +584,7 @@ export default function App() {
 
           return (
             <div key={idx} style={{ ...s.thumb, boxShadow: ring }} onClick={handleClick}>
-              <img src={`/imgs/${img}`} alt="" style={s.thumbImg} />
+              <img src={`${IMGS}/imgs/${img}`} alt="" style={s.thumbImg} />
 
               {/* Status badge */}
               {annotated && !locked && (
@@ -687,7 +690,7 @@ export default function App() {
         <div onClick={e => { if (e.target === e.currentTarget) setPopupImg(null); }}
           style={s.overlay}>
           <div style={{ position: "relative" }}>
-            <img src={`/imgs/${popupImg}`} alt=""
+            <img src={`${IMGS}/imgs/${popupImg}`} alt=""
               style={{ maxWidth: "85vw", maxHeight: "80vh", borderRadius: 12 }} />
 
             {isLocked(popupImg) ? (

@@ -98,6 +98,8 @@ def load_blacklist():
     return set()
 
 def discover_images():
+    if IMAGES_ROOT is None:
+        return []
     blacklist = load_blacklist()
     images = []
     for pattern in DISTRICT_PATTERNS:
